@@ -1,13 +1,16 @@
-﻿using System.Text;
-using System.Threading.RateLimiting;
-using Backend.Data;
+﻿using Backend.Data;
 using Backend.Models;
+using Backend.Services;
+using BackendTrack.Interfaces;
+using BackendTrack.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -119,6 +122,10 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddMemoryCache();
+
 // ---------- Controllers + Swagger with JWT Authorize button ----------
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -153,6 +160,13 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    await RoleSeeder.SeedRolesAsync(scope.ServiceProvider);
+    await AdminSeeder.SeedAdminAsync(scope.ServiceProvider, builder.Configuration);
+    await QuizSeeder.SeedQuizAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>());
+}
 
 // ---------- Middleware pipeline (الترتيب مهم) ----------
 if (app.Environment.IsDevelopment())
