@@ -124,6 +124,8 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IQuizService, QuizService>();
+builder.Services.AddScoped<ITopicService, TopicService>();
 builder.Services.AddMemoryCache();
 
 // ---------- Controllers + Swagger with JWT Authorize button ----------
@@ -140,7 +142,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "ادخلي التوكن هيك: Bearer {token}"
+        Description = "Bearer {token}"
     });
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
