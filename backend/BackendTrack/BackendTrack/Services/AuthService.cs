@@ -1,5 +1,5 @@
 ﻿using Backend.Models;
-using BackendTrack.Dtos;
+using BackendTrack.Dtos.AuthDtos;
 using BackendTrack.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;

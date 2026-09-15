@@ -1,16 +1,14 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace BackendTrack.Dtos
+namespace BackendTrack.Dtos.AuthDtos
 {
-    public class RegisterDto
+    public class LoginDto
     {
-        [Required]
-        public string FullName { get; set; } = string.Empty;
-
         [Required, EmailAddress]
         public string Email { get; set; } = string.Empty;
 
-        [Required, MinLength(8)]
+        [Required]
         public string Password { get; set; } = string.Empty;
     }
+
 }

@@ -1,5 +1,4 @@
-﻿
-using BackendTrack.Dtos;
+﻿using BackendTrack.Dtos.AuthDtos;
 
 namespace Backend.Services
 {

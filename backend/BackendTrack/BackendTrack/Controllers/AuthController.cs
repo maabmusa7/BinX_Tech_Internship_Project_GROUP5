@@ -1,6 +1,6 @@
 ﻿
 using Backend.Services;
-using BackendTrack.Dtos;
+using BackendTrack.Dtos.AuthDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;

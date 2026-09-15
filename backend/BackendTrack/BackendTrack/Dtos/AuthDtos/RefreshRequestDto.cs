@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace BackendTrack.Dtos
+namespace BackendTrack.Dtos.AuthDtos
 {
     public class RefreshRequestDto
     {

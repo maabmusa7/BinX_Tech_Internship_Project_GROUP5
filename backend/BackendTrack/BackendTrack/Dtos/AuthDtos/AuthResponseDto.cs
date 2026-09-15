@@ -1,4 +1,4 @@
-﻿namespace BackendTrack.Dtos
+﻿namespace BackendTrack.Dtos.AuthDtos
 {
     public class AuthResponseDto
     {
