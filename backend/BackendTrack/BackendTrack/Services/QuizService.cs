@@ -36,7 +36,7 @@ namespace Backend.Services
         {
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
-                return ServiceResult<QuizResultDto>.Fail(ServiceError.Unauthorized, "مستخدم غير موجود.");
+                return ServiceResult<QuizResultDto>.Fail(ServiceError.Unauthorized, "User Not Found.");
 
             var questionIds = dto.Answers.Select(a => a.QuestionId).ToList();
             var validOptions = await _db.QuizOptions

@@ -29,7 +29,7 @@ namespace Backend.Services
         {
             var existing = await _userManager.FindByEmailAsync(dto.Email);
             if (existing != null)
-                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Conflict, "البريد الإلكتروني مستخدم مسبقًا.");
+                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Conflict, "Email Already Used.");
 
             var user = new ApplicationUser
             {
@@ -51,11 +51,11 @@ namespace Backend.Services
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
             if (user == null || !user.IsActive)
-                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "بيانات الدخول غير صحيحة أو الحساب معطّل.");
+                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "Invalid Data");
 
             var signInResult = await _signInManager.CheckPasswordSignInAsync(user, dto.Password, lockoutOnFailure: true);
             if (!signInResult.Succeeded)
-                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "بيانات الدخول غير صحيحة.");
+                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "Incorrect Data");
 
             return ServiceResult<AuthResponseDto>.Ok(await BuildAuthResponseAsync(user));
         }
@@ -65,14 +65,14 @@ namespace Backend.Services
             var principal = _tokenService.GetPrincipalFromExpiredToken(dto.Token);
             var userId = principal?.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null)
-                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "توكن غير صالح.");
+                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "Token Invalid");
 
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null || !user.IsActive ||
                 user.RefreshToken != dto.RefreshToken ||
                 user.RefreshTokenExpiryTime <= DateTime.UtcNow)
             {
-                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "Refresh Token غير صالح أو منتهي، لازم تسجّلي دخول من جديد.");
+                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "Refresh Token Not Valid.");
             }
 
             return ServiceResult<AuthResponseDto>.Ok(await BuildAuthResponseAsync(user));
@@ -82,7 +82,7 @@ namespace Backend.Services
         {
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
-                return ServiceResult.Fail(ServiceError.NotFound, "المستخدم غير موجود.");
+                return ServiceResult.Fail(ServiceError.NotFound, "User Not Found.");
 
             user.RefreshToken = null;
             user.RefreshTokenExpiryTime = null;

@@ -44,7 +44,6 @@ namespace Backend.Services
             if (user?.Level == null)
                 return allTopics;
 
-            // مواضيع مستوى المستخدم أول، والباقي بعدها — بدون ما نخفي أي شي
             return allTopics
                 .OrderBy(t => t.Difficulty == user.Level.ToString() ? 0 : 1)
                 .ToList();
@@ -90,7 +89,7 @@ namespace Backend.Services
         {
             var topic = await _db.Topics.FindAsync(id);
             if (topic == null)
-                return ServiceResult.Fail(ServiceError.NotFound, "الموضوع غير موجود.");
+                return ServiceResult.Fail(ServiceError.NotFound, "Topic Not Found.");
 
             topic.Name = dto.Name;
             topic.Description = dto.Description;
@@ -107,7 +106,7 @@ namespace Backend.Services
         {
             var topic = await _db.Topics.FindAsync(id);
             if (topic == null)
-                return ServiceResult.Fail(ServiceError.NotFound, "الموضوع غير موجود.");
+                return ServiceResult.Fail(ServiceError.NotFound, "Topic Not Found.");
 
             topic.IsActive = false;
             await _db.SaveChangesAsync();

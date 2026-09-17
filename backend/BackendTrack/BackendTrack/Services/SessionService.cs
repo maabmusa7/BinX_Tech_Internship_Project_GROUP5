@@ -70,7 +70,7 @@ namespace Backend.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId);
 
             if (session == null || session.UserId != userId)
-                return ServiceResult<SessionDetailDto>.Fail(ServiceError.NotFound, "الجلسة غير موجودة.");
+                return ServiceResult<SessionDetailDto>.Fail(ServiceError.NotFound, "Session Not Found.");
 
             return ServiceResult<SessionDetailDto>.Ok(new SessionDetailDto
             {
@@ -99,10 +99,10 @@ namespace Backend.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId);
 
             if (session == null || session.UserId != userId)
-                return ServiceResult<TurnResultDto>.Fail(ServiceError.NotFound, "الجلسة غير موجودة.");
+                return ServiceResult<TurnResultDto>.Fail(ServiceError.NotFound, "Session Not Found.");
 
             if (session.Status != SessionStatus.InProgress)
-                return ServiceResult<TurnResultDto>.Fail(ServiceError.BadRequest, "الجلسة انتهت.");
+                return ServiceResult<TurnResultDto>.Fail(ServiceError.BadRequest, "Session Finished.");
 
             var history = session.Turns.OrderBy(t => t.TurnNumber).Select(t => t.AiReplyText).ToList();
             var aiResult = await _ai.ProcessTurnAsync(dto.AudioUrl, session.Topic.Name, history);
@@ -141,10 +141,10 @@ namespace Backend.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId);
 
             if (session == null || session.UserId != userId)
-                return ServiceResult<SessionSummaryDto>.Fail(ServiceError.NotFound, "الجلسة غير موجودة.");
+                return ServiceResult<SessionSummaryDto>.Fail(ServiceError.NotFound, "Session Not Found.");
 
             if (session.Status == SessionStatus.Completed)
-                return ServiceResult<SessionSummaryDto>.Fail(ServiceError.BadRequest, "الجلسة منتهية مسبقًا.");
+                return ServiceResult<SessionSummaryDto>.Fail(ServiceError.BadRequest, "Session Finished.");
 
             var scoredTurns = session.Turns.Where(t => t.TurnNumber > 0).ToList();
             session.SummaryScore = scoredTurns.Count > 0 ? scoredTurns.Average(t => t.PronunciationScore) : null;
