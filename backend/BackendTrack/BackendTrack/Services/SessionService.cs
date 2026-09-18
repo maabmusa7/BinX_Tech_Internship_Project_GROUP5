@@ -26,7 +26,7 @@ namespace Backend.Services
         {
             var topic = await _db.Topics.FindAsync(dto.TopicId);
             if (topic == null || !topic.IsActive)
-                return ServiceResult<SessionDto>.Fail(ServiceError.NotFound, "الموضوع غير موجود أو غير فعّال.");
+                return ServiceResult<SessionDto>.Fail(ServiceError.NotFound, "Topic Not Found.");
 
             var session = new Session
             {
@@ -38,7 +38,7 @@ namespace Backend.Services
             _db.Sessions.Add(session);
             await _db.SaveChangesAsync();
 
-            var openingLine = await _ai.GetOpeningLineAsync(topic.Name);
+            var openingLine = BuildOpeningLine(topic.Name);
 
             _db.Turns.Add(new Turn
             {
@@ -102,7 +102,7 @@ namespace Backend.Services
                 return ServiceResult<TurnResultDto>.Fail(ServiceError.NotFound, "Session Not Found.");
 
             if (session.Status != SessionStatus.InProgress)
-                return ServiceResult<TurnResultDto>.Fail(ServiceError.BadRequest, "Session Finished.");
+                return ServiceResult<TurnResultDto>.Fail(ServiceError.BadRequest, "Session Finished , You Can’t Add At This Session.");
 
             var history = session.Turns.OrderBy(t => t.TurnNumber).Select(t => t.AiReplyText).ToList();
             var aiResult = await _ai.ProcessTurnAsync(dto.AudioUrl, session.Topic.Name, history);
@@ -163,6 +163,9 @@ namespace Backend.Services
                 CurrentStreak = session.User.CurrentStreak
             });
         }
+
+        private static string BuildOpeningLine(string topicName) =>
+            $"Hi! Let's talk about {topicName}. Tell me a bit about it — how would you start?";
 
         private static void UpdateStreak(ApplicationUser user)
         {

@@ -1,15 +1,14 @@
-﻿using BackendTrack.Interfaces;
-using static BackendTrack.Interfaces.IAiSpeechService;
-
-namespace BackendTrack.Services
+﻿namespace Backend.Services
 {
+    public record TurnAiResult(string TranscribedText, string AiReplyText, double PronunciationScore, string FeedbackText);
+
+    public interface IAiSpeechService
+    {
+        Task<TurnAiResult> ProcessTurnAsync(string audioUrl, string topicName, List<string> conversationHistory);
+    }
+
     public class StubAiSpeechService : IAiSpeechService
     {
-        public Task<string> GetOpeningLineAsync(string topicName)
-        {
-            return Task.FromResult($"Hi! Let's talk about {topicName}. Tell me a bit about it — how would you start?");
-        }
-
         public Task<TurnAiResult> ProcessTurnAsync(string audioUrl, string topicName, List<string> conversationHistory)
         {
             var result = new TurnAiResult(

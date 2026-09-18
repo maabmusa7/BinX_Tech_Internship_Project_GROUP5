@@ -5,12 +5,12 @@ using BackendTrack.Interfaces;
 using BackendTrack.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Threading.RateLimiting;
+using IAiSpeechService = Backend.Services.IAiSpeechService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -123,7 +123,6 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddScoped<ITokenService, TokenService>();
-builder.Services.AddScoped<IAiSpeechService, StubAiSpeechService>(); 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<ITopicService, TopicService>();
@@ -132,6 +131,11 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<IAiSpeechService, RealAiSpeechService>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["AiService:BaseUrl"]!);
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 // ---------- Controllers + Swagger with JWT Authorize button ----------
 builder.Services.AddControllers();

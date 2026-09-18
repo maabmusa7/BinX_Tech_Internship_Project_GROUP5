@@ -1,5 +1,4 @@
-﻿using Backend.DTOs;
-using BackendTrack.Dtos.SessionDtos;
+﻿using BackendTrack.Dtos.SessionDtos;
 
 namespace Backend.Services
 {
