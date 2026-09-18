@@ -5,12 +5,12 @@ using BackendTrack.Interfaces;
 using BackendTrack.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Threading.RateLimiting;
-using IAiSpeechService = Backend.Services.IAiSpeechService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,7 +19,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException(
-        $"ConnectionString ContentRoot  {builder.Environment.ContentRootPath}");
+        $"ConnectionString مش موصول. ContentRoot الحالي: {builder.Environment.ContentRootPath}");
 }
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 36))));
@@ -123,6 +123,11 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddHttpClient<Backend.Services.IAiSpeechService, RealAiSpeechService>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["AiService:BaseUrl"]!);
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<ITopicService, TopicService>();
@@ -131,11 +136,6 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddMemoryCache();
-builder.Services.AddHttpClient<IAiSpeechService, RealAiSpeechService>(client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["AiService:BaseUrl"]!);
-    client.Timeout = TimeSpan.FromSeconds(30);
-});
 
 // ---------- Controllers + Swagger with JWT Authorize button ----------
 builder.Services.AddControllers();
@@ -151,7 +151,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Bearer {token}"
+        Description = " Bearer {token}"
     });
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -176,7 +176,10 @@ using (var scope = app.Services.CreateScope())
 {
     await RoleSeeder.SeedRolesAsync(scope.ServiceProvider);
     await AdminSeeder.SeedAdminAsync(scope.ServiceProvider, builder.Configuration);
-    await QuizSeeder.SeedQuizAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>());
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await QuizSeeder.SeedQuizAsync(dbContext);
+    await TopicSeeder.SeedTopicsAsync(dbContext);
+    await DemoDataSeeder.SeedDemoUserAsync(scope.ServiceProvider, builder.Configuration, dbContext);
 }
 
 // ---------- Middleware pipeline (الترتيب مهم) ----------
