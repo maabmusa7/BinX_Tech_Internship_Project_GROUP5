@@ -62,7 +62,6 @@ If alignment fails, returns `{"words": [], "warning": "alignment_failed"}` inste
 
 ## Notebooks
 
-- `01_EDA.ipynb` — dataset exploration
-- `02_baseline_v1.ipynb` — raw alignment score baseline
-- `03_char_features_v2.ipynb` — final model training (char features + classifier)
-- `04_pipeline_functions.ipynb` — deployable functions + performance tests
+- `whisperx_pronounciation.ipynb` — dataset exploration, raw alignment score baseline
+- `char_features_v2.ipynb` — final model training (char features + classifier)
+- `pipeline_functions.ipynb` — deployable functions + performance tests
