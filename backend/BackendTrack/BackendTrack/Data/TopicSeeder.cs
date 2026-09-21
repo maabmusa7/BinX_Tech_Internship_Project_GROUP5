@@ -1,4 +1,5 @@
 ﻿using Backend.Models;
+using BackendTrack.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Data
@@ -8,43 +9,63 @@ namespace Backend.Data
         public static async Task SeedTopicsAsync(AppDbContext db)
         {
             if (await db.Topics.AnyAsync())
-                return; 
+                return;
 
             var topics = new List<Topic>
             {
                 new()
                 {
-                    Name = "Ordering Food",
-                    Description = "Practice ordering food at a restaurant — greetings, asking about the menu, and making requests.",
+                    Name = "Ordering at a Café",
+                    Description = "Master ordering specialty drinks, requesting customized ingredients, and casual small talk with the barista.",
                     Difficulty = LevelEnum.Beginner,
+                    Category = TopicCategory.DailyLife,
+                    EstimatedMinutes = 6,
+                    SessionMission = "Order your favorite espresso, choose oat milk & cup size, and ask for the check smoothly.",
+                    MaxTurns = 6,
                     IsActive = true
                 },
                 new()
                 {
-                    Name = "Introducing Yourself",
-                    Description = "Talk about your name, where you're from, and your hobbies — great for absolute beginners.",
+                    Name = "Casual Small Talk",
+                    Description = "Practice greetings, weather chat, and light social conversation with a stranger.",
                     Difficulty = LevelEnum.Beginner,
+                    Category = TopicCategory.Social,
+                    EstimatedMinutes = 5,
+                    SessionMission = "Greet someone new, ask how they're doing, and keep the small talk flowing naturally.",
+                    MaxTurns = 5,
                     IsActive = true
                 },
                 new()
                 {
-                    Name = "Job Interview",
-                    Description = "Practice answering common interview questions about your experience and strengths.",
+                    Name = "Checking into a Hotel",
+                    Description = "Practice check-in conversations — confirming reservations, asking about amenities, and requesting a room change.",
                     Difficulty = LevelEnum.Intermediate,
+                    Category = TopicCategory.Travel,
+                    EstimatedMinutes = 6,
+                    SessionMission = "Check in with your reservation, ask about breakfast hours, and request a quieter room.",
+                    MaxTurns = 6,
                     IsActive = true
                 },
                 new()
                 {
-                    Name = "Making Weekend Plans",
-                    Description = "Discuss plans with a friend — suggesting activities, agreeing, and negotiating times.",
+                    Name = "Job Interview & Career",
+                    Description = "Articulate previous work experience, handle unexpected behavioral questions, and negotiate project deadlines.",
                     Difficulty = LevelEnum.Intermediate,
+                    Category = TopicCategory.Career,
+                    EstimatedMinutes = 8,
+                    SessionMission = "Introduce your experience, answer a behavioral question, and negotiate a project deadline.",
+                    MaxTurns = 6,
                     IsActive = true
                 },
                 new()
                 {
-                    Name = "Debating a Social Issue",
-                    Description = "Share and defend an opinion on a current topic, respond to counterarguments.",
+                    Name = "Negotiating Project Deadlines",
+                    Description = "Discuss and negotiate a tight deadline with a manager — pushing back respectfully and proposing alternatives.",
                     Difficulty = LevelEnum.Advanced,
+                    Category = TopicCategory.Career,
+                    EstimatedMinutes = 8,
+                    SessionMission = "Explain why the deadline is unrealistic and propose two alternative timelines.",
+                    MaxTurns = 6,
                     IsActive = true
                 }
             };

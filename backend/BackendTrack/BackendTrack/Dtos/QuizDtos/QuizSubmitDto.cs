@@ -6,5 +6,7 @@ namespace BackendTrack.Dtos.QuizDtos
     {
         [Required]
         public List<QuizAnswerDto> Answers { get; set; } = new();
+
+        public int? TimeTakenSeconds { get; set; }
     }
 }

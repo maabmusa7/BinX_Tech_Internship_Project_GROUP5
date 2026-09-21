@@ -10,7 +10,7 @@ namespace Backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [EnableRateLimiting("ai-heavy")] 
+    [EnableRateLimiting("ai-heavy")]
     public class AuthController : ApiControllerBase
     {
         private readonly IAuthService _authService;
@@ -39,5 +39,14 @@ namespace Backend.Controllers
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             return FromResult(await _authService.LogoutAsync(userId));
         }
+
+        // ملاحظة MVP: بدون خدمة إيميل، الـ token برجع بالـ response مباشرة (شوفي التعليق بالـ Service)
+        [HttpPost("forgot-password")]
+        public async Task<ActionResult<string>> ForgotPassword(ForgotPasswordDto dto) =>
+            FromResult(await _authService.ForgotPasswordAsync(dto));
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordDto dto) =>
+            FromResult(await _authService.ResetPasswordAsync(dto));
     }
 }

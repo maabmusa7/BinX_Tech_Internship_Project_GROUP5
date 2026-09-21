@@ -11,8 +11,10 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Threading.RateLimiting;
+using IAiSpeechService = Backend.Services.IAiSpeechService;
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 // ---------- Database ----------
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -128,6 +130,9 @@ builder.Services.AddHttpClient<Backend.Services.IAiSpeechService, RealAiSpeechSe
     client.BaseAddress = new Uri(builder.Configuration["AiService:BaseUrl"]!);
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IAiSpeechService, StubAiSpeechService>(); 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<ITopicService, TopicService>();

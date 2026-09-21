@@ -29,7 +29,7 @@ namespace Backend.Services
         {
             var existing = await _userManager.FindByEmailAsync(dto.Email);
             if (existing != null)
-                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Conflict, "Email Already Used.");
+                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Conflict, "البريد الإلكتروني مستخدم مسبقًا.");
 
             var user = new ApplicationUser
             {
@@ -51,11 +51,11 @@ namespace Backend.Services
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
             if (user == null || !user.IsActive)
-                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "Invalid Data");
+                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "بيانات الدخول غير صحيحة أو الحساب معطّل.");
 
             var signInResult = await _signInManager.CheckPasswordSignInAsync(user, dto.Password, lockoutOnFailure: true);
             if (!signInResult.Succeeded)
-                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "Incorrect Data");
+                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "بيانات الدخول غير صحيحة.");
 
             return ServiceResult<AuthResponseDto>.Ok(await BuildAuthResponseAsync(user));
         }
@@ -65,14 +65,14 @@ namespace Backend.Services
             var principal = _tokenService.GetPrincipalFromExpiredToken(dto.Token);
             var userId = principal?.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null)
-                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "Token Invalid");
+                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "توكن غير صالح.");
 
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null || !user.IsActive ||
                 user.RefreshToken != dto.RefreshToken ||
                 user.RefreshTokenExpiryTime <= DateTime.UtcNow)
             {
-                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "Refresh Token Not Valid.");
+                return ServiceResult<AuthResponseDto>.Fail(ServiceError.Unauthorized, "Refresh Token غير صالح أو منتهي، لازم تسجّلي دخول من جديد.");
             }
 
             return ServiceResult<AuthResponseDto>.Ok(await BuildAuthResponseAsync(user));
@@ -82,11 +82,34 @@ namespace Backend.Services
         {
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
-                return ServiceResult.Fail(ServiceError.NotFound, "User Not Found.");
+                return ServiceResult.Fail(ServiceError.NotFound, "المستخدم غير موجود.");
 
             user.RefreshToken = null;
             user.RefreshTokenExpiryTime = null;
             await _userManager.UpdateAsync(user);
+
+            return ServiceResult.Ok();
+        }
+
+        public async Task<ServiceResult<string>> ForgotPasswordAsync(ForgotPasswordDto dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            if (user == null)
+                return ServiceResult<string>.Fail(ServiceError.NotFound, "ما في حساب بهاد الإيميل.");
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            return ServiceResult<string>.Ok(token);
+        }
+
+        public async Task<ServiceResult> ResetPasswordAsync(ResetPasswordDto dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            if (user == null)
+                return ServiceResult.Fail(ServiceError.NotFound, "ما في حساب بهاد الإيميل.");
+
+            var result = await _userManager.ResetPasswordAsync(user, dto.Token, dto.NewPassword);
+            if (!result.Succeeded)
+                return ServiceResult.Fail(ServiceError.BadRequest, result.Errors.Select(e => e.Description).ToList());
 
             return ServiceResult.Ok();
         }
@@ -111,7 +134,9 @@ namespace Backend.Services
                 FullName = user.FullName,
                 Role = roles.FirstOrDefault() ?? "User",
                 Level = user.Level?.ToString(),
-                CurrentStreak = user.CurrentStreak
+                CefrLevel = user.CefrLevel,
+                CurrentStreak = user.CurrentStreak,
+                CosmicXp = user.CosmicXp
             };
         }
     }
