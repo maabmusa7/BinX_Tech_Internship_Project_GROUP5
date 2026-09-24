@@ -1,35 +1,67 @@
-# STT + Pronunciation Scoring (WhisperX)
-AI/ML track — the module that turns the learner's recorded speech into text and flags which words may have been mispronounced.
+# Speech-to-Text & Pronunciation Scoring
 
-## Model: WhisperX
+STT module for the AI/ML service. Converts user speech to text, then scores pronunciation quality per word — built on a frozen WhisperX model (no fine-tuning), with a lightweight classifier trained on top of its alignment features.
 
-WhisperX is used as a **frozen pretrained model** — no training or fine-tuning from scratch.
+## Model & Approach
 
-**Why WhisperX:**
-- Returns a transcript **plus per-word confidence scores and timestamps** out of the box — exactly the signal needed to flag individual words
-- Mature, well-documented tooling; fast to set up within the project's 7-day timeline
-- Per mentor guidance, fine-tuning was skipped in favour of evaluating a pretrained model, given time and compute constraints
+- **STT:** WhisperX "small" — audio → transcript
+- **Pronunciation scoring:** WhisperX forced alignment (character-level) → 4 features (mean/min/std/range of char scores) → Logistic Regression classifier (threshold = 0.62)
+- Evaluated on speechocean762: **F1 = 0.31** on test set (vs 0.25 for a raw-confidence baseline)
+- ~10% of words in the dataset are true pronunciation issues (class imbalance), so Precision/Recall were used instead of raw accuracy
 
-**Trade-off:** feedback is at the **word level** ("this word may be off"), not the phoneme level ("the 'th' sound specifically was wrong"). Phoneme-level scoring (e.g. Wav2Vec2 + ARPAbet alignment) was considered but ruled out as too costly for the available time.
+## How to Use
 
-## Datasets
+Two functions, chained together:
 
-| Dataset | Role |
+```python
+transcript = transcribe(audio_array, transcribe_model)
+
+result = score_pronunciation(
+    audio_array, sample_rate, transcript,
+    align_model, align_metadata, classifier, device
+)
+```
+
+Or call both at once:
+
+```python
+result = process_audio_turn(
+    audio_array, sample_rate,
+    transcribe_model, align_model, align_metadata, classifier, device
+)
+```
+
+## Output Format
+
+```json
+{
+  "transcript": "I think this is good",
+  "pronunciation": {
+    "words": [
+      {"word": "I", "confidence": 0.12, "flag": "ok"},
+      {"word": "think", "confidence": 0.71, "flag": "needs_attention"},
+      {"word": "this", "confidence": 0.09, "flag": "ok"}
+    ]
+  }
+}
+```
+
+| Field | Meaning |
 |---|---|
-| **speechocean762** | Primary dataset. Non-native English speakers with human-annotated pronunciation scores at sentence, word, and phoneme level. Used for EDA and for calibrating the confidence threshold. |
-| **L2-ARCTIC** | Secondary check. Non-native speakers across several first languages (incl. Arabic) — used to see whether performance holds beyond speechocean762's Mandarin-only speakers. |
-| **Common Voice** | Sanity check only. Diverse general English, used to confirm the model still performs reasonably on everyday speech. |
+| `transcript` | Full text recognized from the audio |
+| `pronunciation.words[].word` | The word |
+| `pronunciation.words[].confidence` | Probability (0-1) that this word has a pronunciation issue |
+| `pronunciation.words[].flag` | `"ok"` or `"needs_attention"` (threshold = 0.62) |
 
-Full EDA is performed on **speechocean762 only**, since it is the dataset the threshold decision is based on. The other two are used for quick performance checks, not for decision-making.
+If alignment fails, returns `{"words": [], "warning": "alignment_failed"}` instead of crashing.
 
-## Approach
+## Performance
 
-1. **EDA** on speechocean762 — data quality, score distributions, audio format
-2. **Run WhisperX** on the audio, extract per-word confidence
-3. **Calibrate a threshold** by comparing confidence against human word-level accuracy scores
-4. **Output** a JSON contract (transcript + per-word confidence + flag) for the LLM/feedback track
+- Latency: ~0.2s per request (STT ~0.12s, scoring ~0.07s)
+- GPU: <0.5GB VRAM
 
-## Note on evaluation metrics
+## Notebooks
 
-Word-level accuracy in the dataset is heavily imbalanced — roughly 90% of words are scored perfect. Plain accuracy would therefore be misleading, so **Precision and Recall** are used instead, treating mispronounced words as the positive class.
-
+- `whisperx_pronounciation.ipynb` — dataset exploration, raw alignment score baseline
+- `char_features_v2.ipynb` — final model training (char features + classifier)
+- `pipeline_functions.ipynb` — deployable functions + performance tests
