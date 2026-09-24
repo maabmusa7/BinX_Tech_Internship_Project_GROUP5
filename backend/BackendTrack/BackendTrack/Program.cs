@@ -11,8 +11,10 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Threading.RateLimiting;
+using IAiSpeechService = Backend.Services.IAiSpeechService;
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 // ---------- Database ----------
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -128,6 +130,9 @@ builder.Services.AddHttpClient<Backend.Services.IAiSpeechService, RealAiSpeechSe
     client.BaseAddress = new Uri(builder.Configuration["AiService:BaseUrl"]!);
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IAiSpeechService, StubAiSpeechService>(); 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<ITopicService, TopicService>();
@@ -138,7 +143,11 @@ builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddMemoryCache();
 
 // ---------- Controllers + Swagger with JWT Authorize button ----------
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter(allowIntegerValues: false)));
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -183,12 +192,12 @@ using (var scope = app.Services.CreateScope())
 }
 
 // ---------- Middleware pipeline (الترتيب مهم) ----------
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() ||
+    app.Configuration.GetValue<bool>("Swagger:Enabled"))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 app.UseHttpsRedirection();
 
 app.UseCors("AppClients");

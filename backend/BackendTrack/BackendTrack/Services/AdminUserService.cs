@@ -43,7 +43,10 @@ namespace Backend.Services
                     FullName = user.FullName,
                     Role = roles.FirstOrDefault() ?? "User",
                     IsActive = user.IsActive,
-                    Level = user.Level?.ToString()
+                    Level = user.Level?.ToString(),
+                    CefrLevel = user.CefrLevel,
+                    CosmicXp = user.CosmicXp,
+                    CurrentStreak = user.CurrentStreak
                 });
             }
 
@@ -60,7 +63,7 @@ namespace Backend.Services
         {
             var user = await _userManager.FindByIdAsync(id.ToString());
             if (user == null)
-                return ServiceResult.Fail(ServiceError.NotFound, "User Not Found.");
+                return ServiceResult.Fail(ServiceError.NotFound, "المستخدم غير موجود.");
 
             user.IsActive = dto.IsActive;
             await _userManager.UpdateAsync(user);

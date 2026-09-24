@@ -7,6 +7,7 @@
         public string Status { get; set; } = string.Empty;
         public DateTime StartedAt { get; set; }
         public double? SummaryScore { get; set; }
+        public int MaxTurns { get; set; }
         public List<TurnResultDto> Turns { get; set; } = new();
     }
 }

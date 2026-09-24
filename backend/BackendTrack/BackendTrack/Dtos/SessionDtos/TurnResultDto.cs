@@ -6,6 +6,10 @@
         public string TranscribedText { get; set; } = string.Empty;
         public string AiReplyText { get; set; } = string.Empty;
         public double PronunciationScore { get; set; }
+        public double FluencyScore { get; set; }
         public string FeedbackText { get; set; } = string.Empty;
+        public string? PhonemeFocusSound { get; set; }
+        public string? PhonemeTip { get; set; }
+        public string? NativeAudioUrl { get; set; }
     }
 }

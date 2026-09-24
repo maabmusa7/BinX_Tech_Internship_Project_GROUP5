@@ -10,6 +10,8 @@
         public string FullName { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
         public string? Level { get; set; }
+        public string? CefrLevel { get; set; }
         public int CurrentStreak { get; set; }
+        public int CosmicXp { get; set; }
     }
 }

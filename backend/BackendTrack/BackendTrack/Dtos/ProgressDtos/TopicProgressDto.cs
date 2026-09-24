@@ -5,5 +5,6 @@
         public string TopicName { get; set; } = string.Empty;
         public int SessionsCount { get; set; }
         public double AverageScore { get; set; }
+        public string Status { get; set; } = string.Empty; 
     }
 }

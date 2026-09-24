@@ -26,7 +26,7 @@ namespace Backend.Services
         {
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
-                return ServiceResult<AdminUserDto>.Fail(ServiceError.NotFound, "User Not Found.");
+                return ServiceResult<AdminUserDto>.Fail(ServiceError.NotFound, "المستخدم غير موجود.");
 
             var roles = await _userManager.GetRolesAsync(user);
 
@@ -37,10 +37,14 @@ namespace Backend.Services
                 FullName = user.FullName,
                 Role = roles.FirstOrDefault() ?? "User",
                 IsActive = user.IsActive,
-                Level = user.Level?.ToString()
+                Level = user.Level?.ToString(),
+                CefrLevel = user.CefrLevel,
+                CosmicXp = user.CosmicXp,
+                CurrentStreak = user.CurrentStreak
             });
         }
 
+        // UC-U9
         public async Task<ServiceResult<PagedResultDto<SessionHistoryItemDto>>> GetSessionHistoryAsync(
             int targetUserId, int page, int pageSize)
         {
@@ -76,7 +80,7 @@ namespace Backend.Services
             });
         }
 
-
+        // UC-U10 — إضافة XP، دقائق منطوقة، حالة إتقان كل موضوع، وتاريخ آخر 7 جلسات للرسم البياني
         public async Task<ServiceResult<ProgressDto>> GetProgressAsync(int targetUserId)
         {
             var cacheKey = $"progress:{targetUserId}";
@@ -100,21 +104,39 @@ namespace Backend.Services
                     {
                         TopicName = g.Key,
                         SessionsCount = g.Count(),
-                        AverageScore = g.Average(s => s.SummaryScore!.Value)
+                        AverageScore = g.Average(s => s.SummaryScore!.Value),
+                        Status = g.Count() >= 3 ? "Mastered" : "InProgress"
                     })
                     .ToListAsync();
+
+                var sessionDurations = await _db.Sessions
+                    .Where(s => s.UserId == targetUserId && s.EndedAt != null)
+                    .Select(s => new { s.StartedAt, EndedAt = s.EndedAt!.Value })
+                    .ToListAsync();
+                var totalMinutes = sessionDurations.Sum(s => (int)(s.EndedAt - s.StartedAt).TotalMinutes);
+
+                var recentScores = await completedSessions
+                    .OrderByDescending(s => s.StartedAt)
+                    .Take(7)
+                    .Select(s => new SessionScorePointDto { Date = s.StartedAt, Score = s.SummaryScore!.Value })
+                    .ToListAsync();
+                recentScores.Reverse(); // أقدم للأحدث — أنسب للرسم البياني
 
                 return new ProgressDto
                 {
                     CurrentStreak = user.CurrentStreak,
                     TotalCompletedSessions = totalCompleted,
                     OverallAverageScore = overallAverage,
-                    TopicsPracticed = byTopic
+                    TotalXp = user.CosmicXp,
+                    TotalMinutesSpoken = totalMinutes,
+                    CefrLevel = user.CefrLevel,
+                    TopicsPracticed = byTopic,
+                    RecentSessionScores = recentScores
                 };
             });
 
             if (cached == null)
-                return ServiceResult<ProgressDto>.Fail(ServiceError.NotFound, "User Not Found.");
+                return ServiceResult<ProgressDto>.Fail(ServiceError.NotFound, "المستخدم غير موجود.");
 
             return ServiceResult<ProgressDto>.Ok(cached);
         }
@@ -123,7 +145,7 @@ namespace Backend.Services
         {
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
-                return ServiceResult.Fail(ServiceError.NotFound, "User Not Found.");
+                return ServiceResult.Fail(ServiceError.NotFound, "المستخدم غير موجود.");
 
             user.FullName = dto.FullName;
             await _userManager.UpdateAsync(user);
@@ -131,12 +153,11 @@ namespace Backend.Services
             return ServiceResult.Ok();
         }
 
-        // UC-U12
         public async Task<ServiceResult> ChangePasswordAsync(int userId, ChangePasswordDto dto)
         {
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
-                return ServiceResult.Fail(ServiceError.NotFound, "User Not Found.");
+                return ServiceResult.Fail(ServiceError.NotFound, "المستخدم غير موجود.");
 
             var result = await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
             if (!result.Succeeded)

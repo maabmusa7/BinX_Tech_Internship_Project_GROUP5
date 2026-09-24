@@ -1,7 +1,6 @@
 ﻿using Backend.Data;
 using Backend.Models;
 using BackendTrack.Dtos.SessionDtos;
-using BackendTrack.Interfaces;
 using BackendTrack.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -13,12 +12,14 @@ namespace Backend.Services
         private readonly AppDbContext _db;
         private readonly IAiSpeechService _ai;
         private readonly IMemoryCache _cache;
+        private readonly IConfiguration _config;
 
-        public SessionService(AppDbContext db, IAiSpeechService ai, IMemoryCache cache)
+        public SessionService(AppDbContext db, IAiSpeechService ai, IMemoryCache cache, IConfiguration config)
         {
             _db = db;
             _ai = ai;
             _cache = cache;
+            _config = config;
         }
 
         // UC-U5
@@ -26,7 +27,7 @@ namespace Backend.Services
         {
             var topic = await _db.Topics.FindAsync(dto.TopicId);
             if (topic == null || !topic.IsActive)
-                return ServiceResult<SessionDto>.Fail(ServiceError.NotFound, "Topic Not Found.");
+                return ServiceResult<SessionDto>.Fail(ServiceError.NotFound, "الموضوع غير موجود أو غير فعّال.");
 
             var session = new Session
             {
@@ -44,10 +45,8 @@ namespace Backend.Services
             {
                 SessionId = session.Id,
                 TurnNumber = 0,
-                AudioUrl = string.Empty,
-                TranscribedText = string.Empty,
                 AiReplyText = openingLine,
-                PronunciationScore = 0,
+                TranscribedText = string.Empty,
                 FeedbackText = string.Empty
             });
             await _db.SaveChangesAsync();
@@ -56,9 +55,12 @@ namespace Backend.Services
             {
                 Id = session.Id,
                 TopicName = topic.Name,
+                TopicCategory = topic.Category.ToString(),
+                SessionMission = topic.SessionMission,
                 Status = session.Status.ToString(),
                 StartedAt = session.StartedAt,
-                OpeningLine = openingLine
+                OpeningLine = openingLine,
+                MaxTurns = topic.MaxTurns
             });
         }
 
@@ -70,42 +72,45 @@ namespace Backend.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId);
 
             if (session == null || session.UserId != userId)
-                return ServiceResult<SessionDetailDto>.Fail(ServiceError.NotFound, "Session Not Found.");
+                return ServiceResult<SessionDetailDto>.Fail(ServiceError.NotFound, "الجلسة غير موجودة.");
 
-            return ServiceResult<SessionDetailDto>.Ok(new SessionDetailDto
-            {
-                Id = session.Id,
-                TopicName = session.Topic.Name,
-                Status = session.Status.ToString(),
-                StartedAt = session.StartedAt,
-                SummaryScore = session.SummaryScore,
-                Turns = session.Turns.OrderBy(t => t.TurnNumber).Select(t => new TurnResultDto
-                {
-                    TurnNumber = t.TurnNumber,
-                    TranscribedText = t.TranscribedText,
-                    AiReplyText = t.AiReplyText,
-                    PronunciationScore = t.PronunciationScore,
-                    FeedbackText = t.FeedbackText
-                }).ToList()
-            });
+            return ServiceResult<SessionDetailDto>.Ok(MapDetail(session));
         }
 
-        // UC-U6 + UC-U7
+        public async Task<ServiceResult<SessionDetailDto>> GetActiveSessionAsync(int userId)
+        {
+            var session = await _db.Sessions
+                .Include(s => s.Topic)
+                .Include(s => s.Turns)
+                .Where(s => s.UserId == userId && s.Status == SessionStatus.InProgress)
+                .OrderByDescending(s => s.StartedAt)
+                .FirstOrDefaultAsync();
+
+            if (session == null)
+                return ServiceResult<SessionDetailDto>.Fail(ServiceError.NotFound, "ما في جلسة شغالة حاليًا.");
+
+            return ServiceResult<SessionDetailDto>.Ok(MapDetail(session));
+        }
+
+        // UC-U6 + UC-U7 — بيقبل صوت أو نص (Text Hybrid)
         public async Task<ServiceResult<TurnResultDto>> SendTurnAsync(int userId, int sessionId, SendTurnDto dto)
         {
+            if (string.IsNullOrWhiteSpace(dto.AudioUrl) && string.IsNullOrWhiteSpace(dto.TextInput))
+                return ServiceResult<TurnResultDto>.Fail(ServiceError.BadRequest, "لازم صوت أو نص، واحد منهم على الأقل.");
+
             var session = await _db.Sessions
                 .Include(s => s.Topic)
                 .Include(s => s.Turns)
                 .FirstOrDefaultAsync(s => s.Id == sessionId);
 
             if (session == null || session.UserId != userId)
-                return ServiceResult<TurnResultDto>.Fail(ServiceError.NotFound, "Session Not Found.");
+                return ServiceResult<TurnResultDto>.Fail(ServiceError.NotFound, "الجلسة غير موجودة.");
 
             if (session.Status != SessionStatus.InProgress)
-                return ServiceResult<TurnResultDto>.Fail(ServiceError.BadRequest, "Session Finished , You Can’t Add At This Session.");
+                return ServiceResult<TurnResultDto>.Fail(ServiceError.BadRequest, "الجلسة خلصت، ما تقدري تضيفي عليها.");
 
             var history = session.Turns.OrderBy(t => t.TurnNumber).Select(t => t.AiReplyText).ToList();
-            var aiResult = await _ai.ProcessTurnAsync(dto.AudioUrl, session.Topic.Name, history);
+            var aiResult = await _ai.ProcessTurnAsync(dto.AudioUrl, dto.TextInput, session.Topic.Name, history);
 
             var nextTurnNumber = session.Turns.Max(t => t.TurnNumber) + 1;
 
@@ -114,25 +119,23 @@ namespace Backend.Services
                 SessionId = session.Id,
                 TurnNumber = nextTurnNumber,
                 AudioUrl = dto.AudioUrl,
+                TextInput = dto.TextInput,
                 TranscribedText = aiResult.TranscribedText,
                 AiReplyText = aiResult.AiReplyText,
                 PronunciationScore = aiResult.PronunciationScore,
-                FeedbackText = aiResult.FeedbackText
+                FluencyScore = aiResult.FluencyScore,
+                VocabularyScore = aiResult.VocabularyScore,
+                FeedbackText = aiResult.FeedbackText,
+                PhonemeFocusSound = aiResult.PhonemeFocusSound,
+                PhonemeTip = aiResult.PhonemeTip,
+                NativeAudioUrl = aiResult.NativeAudioUrl
             };
             _db.Turns.Add(turn);
             await _db.SaveChangesAsync();
 
-            return ServiceResult<TurnResultDto>.Ok(new TurnResultDto
-            {
-                TurnNumber = turn.TurnNumber,
-                TranscribedText = turn.TranscribedText,
-                AiReplyText = turn.AiReplyText,
-                PronunciationScore = turn.PronunciationScore,
-                FeedbackText = turn.FeedbackText
-            });
+            return ServiceResult<TurnResultDto>.Ok(MapTurn(turn));
         }
 
-        // UC-U8
         public async Task<ServiceResult<SessionSummaryDto>> EndSessionAsync(int userId, int sessionId)
         {
             var session = await _db.Sessions
@@ -141,17 +144,42 @@ namespace Backend.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId);
 
             if (session == null || session.UserId != userId)
-                return ServiceResult<SessionSummaryDto>.Fail(ServiceError.NotFound, "Session Not Found.");
+                return ServiceResult<SessionSummaryDto>.Fail(ServiceError.NotFound, "الجلسة غير موجودة.");
 
             if (session.Status == SessionStatus.Completed)
-                return ServiceResult<SessionSummaryDto>.Fail(ServiceError.BadRequest, "Session Finished.");
+                return ServiceResult<SessionSummaryDto>.Fail(ServiceError.BadRequest, "الجلسة منتهية مسبقًا.");
 
             var scoredTurns = session.Turns.Where(t => t.TurnNumber > 0).ToList();
-            session.SummaryScore = scoredTurns.Count > 0 ? scoredTurns.Average(t => t.PronunciationScore) : null;
+
+            double? avgPron = null, avgFluency = null, avgVocab = null, overall = null;
+            if (scoredTurns.Count > 0)
+            {
+                avgPron = scoredTurns.Average(t => t.PronunciationScore);
+                avgFluency = scoredTurns.Average(t => t.FluencyScore);
+                avgVocab = scoredTurns.Average(t => t.VocabularyScore);
+                overall = (avgPron.Value + avgFluency.Value + avgVocab.Value) / 3;
+            }
+
+            session.AvgPronunciation = avgPron;
+            session.AvgFluency = avgFluency;
+            session.AvgVocabulary = avgVocab;
+            session.SummaryScore = overall;
             session.Status = SessionStatus.Completed;
             session.EndedAt = DateTime.UtcNow;
 
+            var xpPerSession = _config.GetValue<int>("Gamification:XpPerCompletedSession");
+            session.XpEarned = xpPerSession;
+            session.User.CosmicXp += xpPerSession;
+
             UpdateStreak(session.User);
+
+            // Recalibration — بس لو فيه درجات فعلية (مش جلسة فاضية)
+            if (overall.HasValue)
+            {
+                var (level, cefr) = CefrCalculator.Recalibrate(session.User.CefrLevel, overall.Value);
+                session.User.Level = level;
+                session.User.CefrLevel = cefr;
+            }
 
             await _db.SaveChangesAsync();
             _cache.Remove($"progress:{session.UserId}");
@@ -160,7 +188,13 @@ namespace Backend.Services
             {
                 SessionId = session.Id,
                 SummaryScore = session.SummaryScore,
-                CurrentStreak = session.User.CurrentStreak
+                AvgPronunciation = session.AvgPronunciation,
+                AvgFluency = session.AvgFluency,
+                AvgVocabulary = session.AvgVocabulary,
+                XpEarned = session.XpEarned,
+                TotalXp = session.User.CosmicXp,
+                CurrentStreak = session.User.CurrentStreak,
+                CefrLevel = session.User.CefrLevel
             });
         }
 
@@ -172,19 +206,35 @@ namespace Backend.Services
             var today = DateTime.UtcNow.Date;
             var lastDate = user.LastSessionDate?.Date;
 
-            if (lastDate == today)
-            {
-            }
-            else if (lastDate == today.AddDays(-1))
-            {
-                user.CurrentStreak += 1;
-            }
-            else
-            {
-                user.CurrentStreak = 1;
-            }
+            if (lastDate == today) { /* جلسة تانية نفس اليوم — ما بيتكرر */ }
+            else if (lastDate == today.AddDays(-1)) user.CurrentStreak += 1;
+            else user.CurrentStreak = 1;
 
             user.LastSessionDate = today;
         }
+
+        private static SessionDetailDto MapDetail(Session session) => new()
+        {
+            Id = session.Id,
+            TopicName = session.Topic.Name,
+            Status = session.Status.ToString(),
+            StartedAt = session.StartedAt,
+            SummaryScore = session.SummaryScore,
+            MaxTurns = session.Topic.MaxTurns,
+            Turns = session.Turns.OrderBy(t => t.TurnNumber).Select(MapTurn).ToList()
+        };
+
+        private static TurnResultDto MapTurn(Turn t) => new()
+        {
+            TurnNumber = t.TurnNumber,
+            TranscribedText = t.TranscribedText,
+            AiReplyText = t.AiReplyText,
+            PronunciationScore = t.PronunciationScore,
+            FluencyScore = t.FluencyScore,
+            FeedbackText = t.FeedbackText,
+            PhonemeFocusSound = t.PhonemeFocusSound,
+            PhonemeTip = t.PhonemeTip,
+            NativeAudioUrl = t.NativeAudioUrl
+        };
     }
 }

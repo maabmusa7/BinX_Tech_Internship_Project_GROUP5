@@ -26,16 +26,21 @@ namespace Backend.Controllers
         public async Task<ActionResult<SessionDto>> StartSession(StartSessionDto dto) =>
             FromResult(await _sessionService.StartSessionAsync(CurrentUserId, dto));
 
-        [HttpGet("{id}")]
+        // شاشة Home — "Continue Practicing"
+        [HttpGet("active")]
+        public async Task<ActionResult<SessionDetailDto>> GetActiveSession() =>
+            FromResult(await _sessionService.GetActiveSessionAsync(CurrentUserId));
+
+        [HttpGet("{id:int}")]
         public async Task<ActionResult<SessionDetailDto>> GetSession(int id) =>
             FromResult(await _sessionService.GetSessionAsync(CurrentUserId, id));
 
-        [HttpPost("{id}/turns")]
+        [HttpPost("{id:int}/turns")]
         [EnableRateLimiting("ai-heavy")]
         public async Task<ActionResult<TurnResultDto>> SendTurn(int id, SendTurnDto dto) =>
             FromResult(await _sessionService.SendTurnAsync(CurrentUserId, id, dto));
 
-        [HttpPatch("{id}/end")]
+        [HttpPatch("{id:int}/end")]
         public async Task<ActionResult<SessionSummaryDto>> EndSession(int id) =>
             FromResult(await _sessionService.EndSessionAsync(CurrentUserId, id));
     }

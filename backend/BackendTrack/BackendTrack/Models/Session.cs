@@ -1,7 +1,8 @@
-﻿using Backend.Models;
+﻿using BackendTrack.Models;
 
-namespace BackendTrack.Models
+namespace Backend.Models
 {
+  
     public class Session
     {
         public int Id { get; set; }
@@ -17,9 +18,12 @@ namespace BackendTrack.Models
         public DateTime StartedAt { get; set; } = DateTime.UtcNow;
         public DateTime? EndedAt { get; set; }
 
-        public double? SummaryScore { get; set; }
+        public double? SummaryScore { get; set; }         
+        public double? AvgPronunciation { get; set; }
+        public double? AvgFluency { get; set; }
+        public double? AvgVocabulary { get; set; }
+        public int XpEarned { get; set; }
 
         public ICollection<Turn> Turns { get; set; } = new List<Turn>();
     }
 }
-
