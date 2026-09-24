@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "918275457018",
+    "project_id": "elio-app-ec56f",
+    "storage_bucket": "elio-app-ec56f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:918275457018:android:c4674713f1b9de7efdee43",
+        "android_client_info": {
+          "package_name": "com.example.elio"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCBRayxnEVof2-voV9I0XgjwV2ugz1HO4c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
