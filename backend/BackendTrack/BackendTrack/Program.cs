@@ -143,7 +143,11 @@ builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddMemoryCache();
 
 // ---------- Controllers + Swagger with JWT Authorize button ----------
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter(allowIntegerValues: false)));
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
